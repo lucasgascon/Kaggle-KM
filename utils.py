@@ -20,8 +20,14 @@ def row_to_image(row):
     image = np.stack([R, G, B], axis=-1)
     return image
 
-def viz_image(image, ax=None):
+def viz_image(image, ax=None, exp_norm = True):
+    new_im = np.zeros(image.shape)
+    for i in range(3):
+        if exp_norm:
+            new_im[:,:,i] = 1/ (1 + np.exp(-10*image[:,:,i]))
+        else:
+            new_im[:,:,i] = (image[:,:,i] - np.min(image[:,:,i]) )/ (np.max(image[:,:,i]) -  np.min(image[:,:,i]))
     if ax is None:
         fig, ax = plt.subplots()
-    ax.imshow(image)
+    ax.imshow(new_im)
     return ax

@@ -9,8 +9,13 @@ import time
 
 
 
-def linear_kernel(x1, x2):
-    return np.dot(x1, x2)
+
+params = {'C': 1.0,
+          'sigma': 5.0,
+          'p': 3,
+        }
+def linear_kernel(x, y):
+    return np.dot(x, y)
 
 def polynomial_kernel(x, y, p=params['p']):
     return (1 + np.dot(x, y)) ** p

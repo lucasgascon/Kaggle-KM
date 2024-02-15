@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import cvxopt
 from numpy import linalg
 from sklearn.model_selection import train_test_split
+from kernels import linear_kernel, polynomial_kernel, gaussian_kernel
 import os
 import time
 

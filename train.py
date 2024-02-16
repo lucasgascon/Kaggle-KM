@@ -237,8 +237,8 @@ def main(args):
 """
 def parser_args(parser):
 
-    parser.add_argument('--hog', type = bool, default = False, help='Use HOG features')
-    parser.add_argument('--raw', type = bool, default = False, help='Use raw pixel features')
+    parser.add_argument('--hog', action = 'store_true', help='Use HOG features')
+    parser.add_argument('--raw', action = 'store_true', help='Use raw pixel features')
     parser.add_argument('--PCA', type = int, default = 0, help='Number of components of PCA, 0 if not used')
     parser.add_argument('--kernelPCA', type = str, default = 'linear_kernel', help='Kernel for PCA')
     parser.add_argument('--strat', type = str, default = 'onevsone', help='Use One vs One or One vs All approach')

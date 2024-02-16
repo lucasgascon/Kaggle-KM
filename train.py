@@ -100,7 +100,8 @@ def main(args):
         train_vector = compute_kernelPCA(train_vector, kernels[args.kernelPCA], args.PCA)
         # If 80% enables to reach the same number of components
         test_vector = compute_kernelPCA(test_vector, kernels[args.kernelPCA], train_vector.shape[1])
-
+    print('Train vector shape:', train_vector.shape)    
+    print('Test vector shape:', test_vector.shape)
     # Split the data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
     

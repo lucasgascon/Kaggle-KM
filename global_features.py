@@ -35,4 +35,26 @@ def compute_kernelPCA(X, kernel, n_components = -1):
         X_pca[:,i] = K@eig_pc[:,i]
     
     return X_pca
+
+
+# To check 
+def compute_fishervector(X, means, covariances, priors):
+    n_samples, n_features = X.shape
+    n_components, _ = means.shape
+    n_features = n_features // n_components
+    
+    FV = np.zeros((n_components*2*n_features))
+    
+    for i in range(n_components):
+        diff = X - means[i]
+        cov = covariances[i]
+        cov_inv = np.linalg.inv(cov)
+        diff = diff.T
+        diff = diff.T
+        diff_cov_inv = diff@cov_inv
+        FV[i*n_features:i*n_features+n_features] = np.sum(diff_cov_inv, axis=0)
+        FV[n_components*n_features+i*n_features:n_components*n_features+i*n_features+n_features] = np.sum(diff_cov_inv**2 - 1, axis=0)
+    
+    FV = FV / np.sqrt(np.sum(FV**2))
+    return FV
  

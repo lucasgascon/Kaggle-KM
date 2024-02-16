@@ -8,8 +8,6 @@ import os
 import time
 
 
-
-
 # Function to convert a row to an image
 def row_to_image(row):
     # Split the row into three parts, for R, G, and B channels
@@ -31,3 +29,24 @@ def viz_image(image, ax=None, exp_norm = True):
         fig, ax = plt.subplots()
     ax.imshow(new_im)
     return ax
+
+# Average the results of several models from submissions placed in a directory
+def average_submissions(dir_path = "submissions/averaging", new_name = "averaged_submission.csv"):
+    for i, sub_files in enumerate(os.listdir(dir_path)):
+        sub = pd.read_csv(os.path.join(dir_path, sub_files))
+        
+        if i == 0:    
+            dict_averaged_label = {row[1]['Id']: [row[1]['Prediction']] for row in sub.iterrows()}
+        else:
+            for row in sub.iterrows():
+                dict_averaged_label[row[1]['Id']].append(row[1]['Prediction'])
+    
+    test_predictions = []
+    for k, v in dict_averaged_label.items():
+        labels, counts = np.unique(v, return_counts=True)
+        id_max_count = np.argmax(counts)
+        ids_max_count = np.where(counts == counts[id_max_count])[0]
+        test_predictions.append(np.random.choice(labels[ids_max_count],1)[0])
+    test_predictions_df = pd.DataFrame({'Prediction' : test_predictions},index = dict_averaged_label.keys())
+    test_predictions_df.to_csv('submissions/'+new_name, index_label='Id')
+

@@ -75,3 +75,45 @@ def calculate_hog(image):
     # Return the feature vectors
     # print(feature_vectors.shape)
     return np.array(feature_vectors).flatten()
+
+
+
+
+
+def get_neighbour(image, center, x, y):
+    value = 0  
+    try: 
+        if image[x,y] >= center: 
+            value = 1
+    except: 
+        pass
+    return value
+    
+def calculate_LocalBinaryPattern(image):
+    # Convert the image to grayscale
+    grayscale_image = np.dot(image, [0.2989, 0.5870, 0.1140])
+    
+    height, width = grayscale_image.shape
+    img_lbp = np.zeros((height, width))
+    for i in range(height):
+        for j in range(width):
+            neigh_val = np.zeros(8)
+            center = image[i,j]
+            
+            # Clockwise order
+            neigh_val[0] = get_neighbour(image, center, i-1, j-1)
+            neigh_val[1] = get_neighbour(image, center, i-1, j)
+            neigh_val[2] = get_neighbour(image, center, i-1, j+1)
+            neigh_val[3] = get_neighbour(image, center, i, j+1)
+            neigh_val[4] = get_neighbour(image, center, i+1, j+1)
+            neigh_val[5] = get_neighbour(image, center, i+1, j)
+            neigh_val[6] = get_neighbour(image, center, i+1, j-1)
+            neigh_val[7] = get_neighbour(image, center, i, j-1)
+            
+            power_base = [1, 2, 4, 8, 16, 32, 64, 128] 
+            img_lbp[i,j] = np.sum(neigh_val * power_base)
+            
+    return img_lbp.flatten()
+            
+            
+    

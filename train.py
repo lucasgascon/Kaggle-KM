@@ -5,8 +5,8 @@ from utils import row_to_image, viz_image
 import os
 import time
 from SVMs import BinarySVM, SVM_SGD
-from kernels import linear_kernel, polynomial_kernel, gaussian_kernel
-from local_features import calculate_hog
+from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel
+from local_features import calculate_hog, calculate_LocalBinaryPattern
 from global_features import compute_kernelPCA
 from tqdm import tqdm
 import argparse
@@ -16,10 +16,14 @@ params = {'C': 1.0,
         'p': 3,
         'learning_rate': 0.01,
         'epochs': 1000,
+        'gamma': 1.0,
+        'r': 0.0,
         }
 kernels = {'linear_kernel': linear_kernel,
            'polynomial_kernel': polynomial_kernel,
-           'gaussian_kernel': gaussian_kernel}
+           'gaussian_kernel': gaussian_kernel,
+           'sigmoid_kernel': sigmoid_kernel,
+           'laplacian_kernel': laplacian_kernel}
     
 def main(args):
     
@@ -29,9 +33,11 @@ def main(args):
     params['p'] = args.p
     params['learning_rate'] = args.learning_rate
     params['epochs'] = args.epochs
+    params['gamma'] = args.gamma
+    params['r'] = args.r
     
     if args.subname == '0':
-        args.subname = 'strat_'+args.strat+'_SVM_'+args.SVM+'_kernelSVM_'+args.kernelSVM+'_PCA_'+str(args.PCA)+'_hog_'+str(args.hog)+'_raw_'+str(args.raw)+'_kernelPCA_'+args.kernelPCA+'_C_'+str(args.C)+'_sigma_'+str(args.sigma)+'_p_'+str(args.p)
+        args.subname = 'strat_'+args.strat+'_kernelSVM_'+args.kernelSVM+'_PCA_'+str(args.PCA)+'_hog_'+str(args.hog)+'_raw_'+str(args.raw)+'_kernelPCA_'+args.kernelPCA+'_C_'+str(args.C)+'_sigma_'+str(args.sigma)+'_p_'+str(args.p)
     
     """Create feature vectors for the training and test sets.
     """
@@ -76,11 +82,24 @@ def main(args):
         else:
             train_vector = np.concatenate((train_vector, train_images.reshape(-1, 3*32*32)), axis=1)
             test_vector = np.concatenate((test_vector, test_images.reshape(-1, 3*32*32)), axis=1)
+    
+    if args.lbp: 
+        print("Calculating LocalBinaryPattern features")
+        train_lbs_features = np.array([calculate_LocalBinaryPattern(image) for image in tqdm(train_images)])
+        test_lbs_features = np.array([calculate_LocalBinaryPattern(image) for image in tqdm(test_images)])
+        
+        if train_vector is None:
+            train_vector = train_lbs_features
+            test_vector = test_lbs_features
+        else:
+            train_vector = np.concatenate((train_vector, train_lbs_features), axis=1)
+            test_vector = np.concatenate((test_vector, test_lbs_features), axis=1)
         
     
-    if args.PCA > 0: 
-        train_vector = compute_kernelPCA(train_vector, args.PCA, kernels[args.kernelPCA])
-        test_vector = compute_kernelPCA(test_vector, args.PCA, kernels[args.kernelPCA])
+    if args.PCA != 0: 
+        train_vector = compute_kernelPCA(train_vector, kernels[args.kernelPCA], args.PCA)
+        # If 80% enables to reach the same number of components
+        test_vector = compute_kernelPCA(test_vector, kernels[args.kernelPCA], train_vector.shape[1])
 
     # Split the data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
@@ -239,7 +258,8 @@ def parser_args(parser):
 
     parser.add_argument('--hog', action = 'store_true', help='Use HOG features')
     parser.add_argument('--raw', action = 'store_true', help='Use raw pixel features')
-    parser.add_argument('--PCA', type = int, default = 0, help='Number of components of PCA, 0 if not used')
+    parser.add_argument('--lbp', action = 'store_true', help='Use Local Binary Pattern features')
+    parser.add_argument('--PCA', type = int, default = 0, help='Number of components of PCA, 0 if not used and -1 if above 80 perc of variance is used')
     parser.add_argument('--kernelPCA', type = str, default = 'linear_kernel', help='Kernel for PCA')
     parser.add_argument('--strat', type = str, default = 'onevsone', help='Use One vs One or One vs All approach')
     parser.add_argument('--SVM', type = str, default = 'SGD', help='SVM algorithm to use')
@@ -250,6 +270,8 @@ def parser_args(parser):
     parser.add_argument('--learning_rate', type = float, default = 0.01, help='Learning rate for SGD')
     parser.add_argument('--epochs', type = int, default = 1000, help='Number of epochs for SGD')
     parser.add_argument('--subname', type = str, default = '0', help='Name of the submission file')
+    parser.add_argument('--gamma', type = float, default = 1., help='Gamma for sigmoid kernel')
+    parser.add_argument('--r', type = float, default = 1., help='r for sigmoid kernel')
 
     return parser
 

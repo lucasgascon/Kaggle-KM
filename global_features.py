@@ -14,6 +14,7 @@ class kernelPCA():
         self.support = None # Data points where the features are evaluated
         self.n_components = n_components ## Number of principal components
         self.lmbd = None # Eigenvalues
+        self.plt = plt
         
     def fit(self,X):
         n_samples, n_features = X.shape
@@ -59,10 +60,10 @@ class kernelPCA():
         for i in range(self.n_components):
             X_pca[:,i] = K@self.alpha[:,i]
             
-        if not plt:
+        if not self.plt:
             return X_pca
         else:
-            explained_var = [sum(self.lmbd[-i] for i in range(1,i+1))/sum(self.lmbd) for i in range(1, self.n_components+1)]
+            explained_var = [sum(self.lmbd[-i] for i in range(1,i+1))/sum(self.lmbd) for i in range(1, len(self.lmbd)+1)]
             plt.figure()
             plt.plot(np.arange(1, len(self.lmbd)+1),explained_var)
             plt.xlabel('Number of components')

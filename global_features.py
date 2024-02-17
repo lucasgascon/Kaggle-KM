@@ -25,7 +25,7 @@ def compute_kernelPCA(X, kernel, n_components = -1):
     if n_components < 0:
         n_components = 0
         ratio = 0
-        while ratio < 0.8:
+        while ratio < 0.8 and n_components < n_features:
             n_components += 1
             ratio = sum(eigvals[-i] for i in range(1,n_components+1))/sum(eigvals)
             

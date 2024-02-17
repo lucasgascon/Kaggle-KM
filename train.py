@@ -37,7 +37,7 @@ def main(args):
     params['r'] = args.r
     
     if args.subname == '0':
-        args.subname = 'strat_'+args.strat+'_kernelSVM_'+args.kernelSVM+'_PCA_'+str(args.PCA)+'_hog_'+str(args.hog)+'_raw_'+str(args.raw)+'_kernelPCA_'+args.kernelPCA+'_C_'+str(args.C)+'_sigma_'+str(args.sigma)+'_p_'+str(args.p)
+        args.subname = 'strat_'+args.strat+'_kernelSVM_'+args.kernelSVM+'_PCA_'+str(args.PCA)+'_hog_'+str(args.hog)+'_lbp_'+str(args.lbp)+'_raw_'+str(args.raw)+'_kernelPCA_'+args.kernelPCA+'_C_'+str(args.C)+'_sigma_'+str(args.sigma)
     
     """Create feature vectors for the training and test sets.
     """
@@ -100,15 +100,20 @@ def main(args):
         train_vector = compute_kernelPCA(train_vector, kernels[args.kernelPCA], args.PCA)
         # If 80% enables to reach the same number of components
         test_vector = compute_kernelPCA(test_vector, kernels[args.kernelPCA], train_vector.shape[1])
-    print('Train vector shape:', train_vector.shape)    
-    print('Test vector shape:', test_vector.shape)
+    # print('Train vector shape:', train_vector.shape)    
+    # print('Test vector shape:', test_vector.shape)
+
     # Split the data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
     
-    print('Kernel:', args.kernelSVM)
+    print('KernelSVM:', args.kernelSVM)
+    print('KernelPCA:', args.kernelPCA)
     print('Features HOG:', args.hog)
     print('Features raw:', args.raw)
-    print('PCA:', args.PCA)
+    print('Features LBP:', args.lbp)
+    print('Dimension PCA:', train_vector.shape[1])
+    print('C:', args.C)
+    print('Sigma:', args.sigma)
     
     """Train a multi-class classifier using the One-vs-All approach.
     """

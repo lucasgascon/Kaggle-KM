@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 import os
 import time
 
-def compute_kernelPCA(X, kernel, n_components = -1):
+def compute_kernelPCA(X, kernel, n_components = -1, plt = False, max_components = 2000):
     n_samples, n_features = X.shape
     K = np.zeros((n_samples, n_samples))
     for i in range(n_samples):
@@ -25,16 +25,26 @@ def compute_kernelPCA(X, kernel, n_components = -1):
     if n_components < 0:
         n_components = 0
         ratio = 0
-        while ratio < 0.8 and n_components < n_features:
+        while ratio < 0.8 and n_components < max_components:
             n_components += 1
             ratio = sum(eigvals[-i] for i in range(1,n_components+1))/sum(eigvals)
+
+    n_components = min(n_components, max_components)
             
     eig_pc = np.column_stack((eigvecs[:,-i]/np.sqrt(eigvals[-i]) for i in range(1,n_components+1)))
     X_pca = np.zeros(((n_samples, n_components)))
     for i in range(n_components):
         X_pca[:,i] = K@eig_pc[:,i]
-    
-    return X_pca
+    if not plt:
+        return X_pca
+    else:
+        explained_var = [sum(eigvals[-i] for i in range(1,n_components+1))/sum(eigvals) for n_components in range(1, max_components+1)]
+        plt.figure()
+        plt.plot(np.arange(1, max_components+1),explained_var)
+        plt.xlabel('Number of components')
+        plt.ylabel('Explained variance')
+        plt.title('Explained variance vs Number of components taken in the PCA for kernel ', kernel.__name__)
+        return X_pca, eigvals, eig_pc
 
 
 # To check 

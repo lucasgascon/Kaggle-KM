@@ -7,7 +7,7 @@ import time
 from SVMs import BinarySVM, SVM_SGD
 from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel
 from local_features import calculate_hog, calculate_LocalBinaryPattern
-from global_features import compute_kernelPCA
+from global_features import kernelPCA
 from tqdm import tqdm
 import argparse
 
@@ -96,12 +96,12 @@ def main(args):
             test_vector = np.concatenate((test_vector, test_lbs_features), axis=1)
         
     
-    if args.PCA != 0: 
-        train_vector = compute_kernelPCA(train_vector, kernels[args.kernelPCA], args.PCA)
+    if args.PCA != 0:
+        kernel_pca = kernelPCA(kernels[args.kernelPCA], args.PCA) 
+        train_vector = kernel_pca.fit(train_vector)
         # If 80% enables to reach the same number of components
-        test_vector = compute_kernelPCA(test_vector, kernels[args.kernelPCA], train_vector.shape[1])
-    # print('Train vector shape:', train_vector.shape)    
-    # print('Test vector shape:', test_vector.shape)
+        test_vector = kernel_pca.transform(test_vector)
+        
 
     # Split the data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)

@@ -1,13 +1,7 @@
 import numpy as np
-from sklearn.model_selection import train_test_split
-import os
-import time
-
-
-
 
 # Function to calculate the Histogram of Oriented Gradients (HOG) for an image
-def calculate_hog(image):
+def calculate_hog(image, local_descriptor = False):
     
     
     # Convert the image to grayscale
@@ -74,7 +68,10 @@ def calculate_hog(image):
 
     # Return the feature vectors
     # print(feature_vectors.shape)
-    return np.array(feature_vectors).flatten()
+    if local_descriptor: 
+        return np.array(feature_vectors).reshape((32//cell_size - 1)**2,num_bins*4)
+    else:
+        return np.array(feature_vectors).flatten()
 
 
 
@@ -114,6 +111,77 @@ def calculate_LocalBinaryPattern(image):
             img_lbp[i,j] = np.sum(neigh_val * power_base)
             
     return img_lbp.flatten()
-            
+"""
+# À Vérifier !!!!!
+def SIFT(image):
+    # Convert the image to grayscale
+    grayscale_image = np.dot(image, [0.2989, 0.5870, 0.1140])
+    
+    # Define the scale space parameters
+    num_octaves = 4
+    num_scales = 5
+    sigma = 1.6
+    
+    # Create the scale space
+    scale_space = np.zeros((num_octaves, num_scales, grayscale_image.shape[0], grayscale_image.shape[1]))
+    octave_images = []
+    
+    # Generate the octave images
+    for octave in range(num_octaves):
+        octave_images.append(grayscale_image)
+        for scale in range(1, num_scales):
+            scaled_image = cv2.resize(octave_images[octave], None, fx=1/(2**scale), fy=1/(2**scale))
+            scaled_image = cv2.GaussianBlur(scaled_image, (0, 0), sigmaX=sigma*(2**scale), sigmaY=sigma*(2**scale))
+            octave_images.append(scaled_image)
+    
+    # Calculate the Difference of Gaussians (DoG)
+    dog = np.zeros((num_octaves, num_scales-1, grayscale_image.shape[0], grayscale_image.shape[1]))
+    for octave in range(num_octaves):
+        for scale in range(num_scales-1):
+            dog[octave, scale] = octave_images[octave][:, :] - octave_images[octave][scale+1][:, :]
+    
+    # Find the keypoints
+    keypoints = []
+    for octave in range(num_octaves):
+        for scale in range(1, num_scales-2):
+            for i in range(1, dog[octave, scale].shape[0]-1):
+                for j in range(1, dog[octave, scale].shape[1]-1):
+                    if is_extremum(dog, octave, scale, i, j):
+                        keypoints.append((i, j))
+    
+    # Compute the descriptors
+    descriptors = []
+    for keypoint in keypoints:
+        descriptor = compute_descriptor(grayscale_image, keypoint)
+        descriptors.append(descriptor)
+    
+    return np.array(descriptors)
+
+
+def is_extremum(dog, octave, scale, i, j):
+    value = dog[octave, scale, i, j]
+    if value > 0:
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                if dog[octave, scale-1, i+x, j+y] >= value or dog[octave, scale+1, i+x, j+y] >= value:
+                    return False
+    else:
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                if dog[octave, scale-1, i+x, j+y] <= value or dog[octave, scale+1, i+x, j+y] <= value:
+                    return False
+    return True
+
+
+def compute_descriptor(image, keypoint):
+    descriptor = []
+    x, y = keypoint
+    patch = image[x-8:x+8, y-8:y+8]
+    patch = cv2.resize(patch, (16, 16))
+    patch = patch.flatten()
+    descriptor.append(patch)
+    return np.array(descriptor)
+    
+""" 
             
     

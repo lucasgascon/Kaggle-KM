@@ -3,11 +3,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from utils import row_to_image, viz_image
 import os
-import time
 from SVMs import BinarySVM, SVM_SGD
 from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel
 from local_features import calculate_hog, calculate_LocalBinaryPattern
-from global_features import kernelPCA
+from global_features import kernelPCA, BoW
 from tqdm import tqdm
 import argparse
 
@@ -37,7 +36,16 @@ def main(args):
     params['r'] = args.r
     
     if args.subname == '0':
-        args.subname = 'strat_'+args.strat+'_kernelSVM_'+args.kernelSVM+'_PCA_'+str(args.PCA)+'_hog_'+str(args.hog)+'_lbp_'+str(args.lbp)+'_raw_'+str(args.raw)+'_kernelPCA_'+args.kernelPCA+'_C_'+str(args.C)+'_sigma_'+str(args.sigma)
+        if args.kernelSVM == 'gaussian_kernel' or args.kernelPCA == 'gaussian_kernel' or args.kernelSVM == 'laplacian_kernel' or args.kernelPCA == 'laplacian_kernel':
+            if args.bow:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_sigma' + str(args.sigma) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k)
+            else:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_sigma' + str(args.sigma) + '_PCA' + str(args.PCA) + '_hog' + str(args.hog) + '_raw' + str(args.raw) + '_lbp' + str(args.lbp)
+        else:
+            if args.bow:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k)
+            else:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_PCA' + str(args.PCA) + '_hog' + str(args.hog) + '_raw' + str(args.raw) + '_lbp' + str(args.lbp)
     
     """Create feature vectors for the training and test sets.
     """
@@ -94,8 +102,24 @@ def main(args):
         else:
             train_vector = np.concatenate((train_vector, train_lbs_features), axis=1)
             test_vector = np.concatenate((test_vector, test_lbs_features), axis=1)
-        
     
+    if args.bow:
+        print("Calculating Bag of Words features")
+        list_train_hog_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(train_images)]
+        list_test_hog_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(test_images)]
+
+        bow = BoW(args.k)
+        train_features = bow.fit(list_train_hog_features)
+        test_features = bow.predict(list_test_hog_features)
+
+        if train_vector is None:
+            train_vector = train_features
+            test_vector = test_features
+        else:
+            train_vector = np.concatenate((train_vector, train_features), axis=1)
+            test_vector = np.concatenate((test_vector, test_features), axis=1)
+            
+            
     if args.PCA != 0:
         kernel_pca = kernelPCA(kernels[args.kernelPCA], args.PCA) 
         train_vector = kernel_pca.fit(train_vector)
@@ -104,8 +128,12 @@ def main(args):
         
 
     # Split the data into training and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
-    
+    if not args.tosubmit:
+        X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
+    else:
+        X_train = train_vector
+        y_train = train_labels
+
     print('KernelSVM:', args.kernelSVM)
     print('KernelPCA:', args.kernelPCA)
     print('Features HOG:', args.hog)
@@ -137,23 +165,23 @@ def main(args):
             models[class_label] = model
 
         # Predict the class labels for the validation set
-
-        predictions = []
-        for features in X_val:  
-            if args.SVM == 'SGD':
-                class_scores = [model.predict(features) for model in models.values()]
+        if not args.tosubmit:
+            predictions = []
+            for features in X_val:  
+                if args.SVM == 'SGD':
+                    class_scores = [model.predict(features) for model in models.values()]
+                    
+                elif args.SVM == 'CVXOPT':
+                    class_scores = [model._decision_function([features])[0] for model in models.values()]
+                # Select the class label with the highest score 
+                # For each label, class score is applied and then take the label which obtains the max class scores
+                predicted_class = max(models.keys(), key=lambda x: class_scores[x])
                 
-            elif args.SVM == 'CVXOPT':
-                class_scores = [model._decision_function([features])[0] for model in models.values()]
-            # Select the class label with the highest score 
-            # For each label, class score is applied and then take the label which obtains the max class scores
-            predicted_class = max(models.keys(), key=lambda x: class_scores[x])
-            
-            # Append the predicted class label to the list of predictions
-            predictions.append(predicted_class)
-        # Calculate the accuracy of the OneVSAll model
-        accuracy = np.mean(predictions == y_val)
-        print("Accuracy: {:.2f}%".format(accuracy * 100))
+                # Append the predicted class label to the list of predictions
+                predictions.append(predicted_class)
+            # Calculate the accuracy of the OneVSAll model
+            accuracy = np.mean(predictions == y_val)
+            print("Accuracy: {:.2f}%".format(accuracy * 100))
 
 
         test_predictions = []
@@ -203,29 +231,29 @@ def main(args):
                 # Fit the model on the training data
                 model.fit(X_train_partial, binary_labels)    
                 models[str(first_class_label)+"_"+str(second_class_label)] = model
-                          
-        predictions = []
-        for features in X_val:
-            labels = {key: 0 for key in np.sort(np.unique(train_labels))}
-            for id, first_class_label in enumerate(np.sort(np.unique(train_labels))[:-1]):
-                for second_class_label in np.sort(np.unique(train_labels))[id+1:]:
-                    
-                    if args.SVM == 'SGD':
-                         pred = models[str(first_class_label)+"_"+str(second_class_label)].predict(features)
-                    elif args.SVM == 'CVXOPT':
-                         pred = models[str(first_class_label)+"_"+str(second_class_label)]._decision_function([features])[0]
+        if not args.tosubmit:              
+            predictions = []
+            for features in X_val:
+                labels = {key: 0 for key in np.sort(np.unique(train_labels))}
+                for id, first_class_label in enumerate(np.sort(np.unique(train_labels))[:-1]):
+                    for second_class_label in np.sort(np.unique(train_labels))[id+1:]:
+                        
+                        if args.SVM == 'SGD':
+                            pred = models[str(first_class_label)+"_"+str(second_class_label)].predict(features)
+                        elif args.SVM == 'CVXOPT':
+                            pred = models[str(first_class_label)+"_"+str(second_class_label)]._decision_function([features])[0]
 
-                    if pred == 1:
-                        labels[first_class_label] += 1
-                    else:   
-                        labels[second_class_label] += 1
-                    
-            # Select the class label with the highest score
-            predicted_class = max(labels.keys(), key=lambda x: labels[x])
-            predictions.append(predicted_class)
-        # Calculate the accuracy of the OneVSOne model
-        accuracy = np.mean(predictions == y_val)
-        print("Accuracy: {:.2f}%".format(accuracy * 100))
+                        if pred == 1:
+                            labels[first_class_label] += 1
+                        else:   
+                            labels[second_class_label] += 1
+                        
+                # Select the class label with the highest score
+                predicted_class = max(labels.keys(), key=lambda x: labels[x])
+                predictions.append(predicted_class)
+            # Calculate the accuracy of the OneVSOne model
+            accuracy = np.mean(predictions == y_val)
+            print("Accuracy: {:.2f}%".format(accuracy * 100))
 
         test_predictions = []
         
@@ -278,6 +306,9 @@ def parser_args(parser):
     parser.add_argument('--subname', type = str, default = '0', help='Name of the submission file')
     parser.add_argument('--gamma', type = float, default = 1., help='Gamma for sigmoid kernel')
     parser.add_argument('--r', type = float, default = 1., help='r for sigmoid kernel')
+    parser.add_argument('--tosubmit', action = 'store_true', help='Choose whether to train on the whole dataset or not')
+    parser.add_argument('--bow', action = 'store_true', help='Use Bag of Words features')
+    parser.add_argument('--k', type = int, default = 100, help='Number of clusters for Bag of Words')
 
     return parser
 

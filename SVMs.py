@@ -1,12 +1,6 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import cvxopt
-from numpy import linalg
-from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 from kernels import linear_kernel, polynomial_kernel, gaussian_kernel
-import os
 import time
 
 

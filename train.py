@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from utils import row_to_image, viz_image
 import os
 from SVMs import BinarySVM, SVM_SGD
-from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel
+from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel, chi2_kernel
 from local_features import calculate_hog, calculate_LocalBinaryPattern
 from global_features import kernelPCA, BoW
 from tqdm import tqdm
@@ -61,13 +61,40 @@ def main(args):
 
     # For trainset
     train_images = np.array([row_to_image(row.values) for index, row in trainset.iterrows()])
+    train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
+    
     
     # For testset
     test_images = np.array([row_to_image(row.values)  for index, row in testset.iterrows()])
+    test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
     
 
     train_vector = None
     test_vector = None
+    
+    # Set kernel parameters:
+    if args.kernelSVM == 'polynomial_kernel':
+        kernels[args.kernelSVM] = lambda x,y: polynomial_kernel(x,y, params['p' ])
+    elif args.kernelSVM == 'gaussian_kernel':
+        kernels[args.kernelSVM] = lambda x,y: gaussian_kernel(x,y, params['sigma'])
+    elif args.kernelSVM == 'sigmoid_kernel':
+        kernels[args.kernelSVM] = lambda x,y: sigmoid_kernel(x,y, params['gamma'], params['r'])
+    elif args.kernelSVM == 'laplacian_kernel':
+        kernels[args.kernelSVM] = lambda x,y: laplacian_kernel(x,y, params['sigma'])
+    elif args.kernelSVM == 'chi2_kernel':
+        kernels[args.kernelSVM] = lambda x,y: chi2_kernel(x,y, params['sigma'])
+    
+    if args.kernelPCA == 'polynomial_kernel':
+        kernels[args.kernelPCA] = lambda x,y: polynomial_kernel(x,y, params['p' ])
+    elif args.kernelPCA == 'gaussian_kernel':
+        kernels[args.kernelPCA] = lambda x,y: gaussian_kernel(x,y, params['sigma'])
+    elif args.kernelPCA == 'sigmoid_kernel':
+        kernels[args.kernelPCA] = lambda x,y: sigmoid_kernel(x,y, params['gamma'], params['r'])
+    elif args.kernelPCA == 'laplacian_kernel':
+        kernels[args.kernelPCA] = lambda x,y: laplacian_kernel(x,y, params['sigma'])
+    elif args.kernelPCA == 'chi2_kernel':
+        kernels[args.kernelPCA] = lambda x,y: chi2_kernel(x,y, params['sigma'])
+        
     
     if args.hog:
         # Calculate the HOG for each image
@@ -134,14 +161,10 @@ def main(args):
         X_train = train_vector
         y_train = train_labels
 
-    print('KernelSVM:', args.kernelSVM)
-    print('KernelPCA:', args.kernelPCA)
-    print('Features HOG:', args.hog)
-    print('Features raw:', args.raw)
-    print('Features LBP:', args.lbp)
+    print('KernelSVM:', args.kernelSVM,'    KernelPCA:', args.kernelPCA, )
+    print('Features HOG:', args.hog,'   Features raw:', args.raw, ' Features LBP:', args.lbp, ' Features BOW:', args.bow)
     print('Dimension PCA:', train_vector.shape[1])
-    print('C:', args.C)
-    print('Sigma:', args.sigma)
+    print('C:', args.C, '   Sigma:', args.sigma)
     
     """Train a multi-class classifier using the One-vs-All approach.
     """

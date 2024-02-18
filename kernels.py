@@ -14,3 +14,6 @@ def sigmoid_kernel(x, y, gamma = 1., r = 1.):
 
 def laplacian_kernel(x, y, sigma = 1.):
     return np.exp(-np.linalg.norm(x-y, ord=1) / sigma**2)
+
+def chi2_kernel(x, y, sigma = 1.):
+    return np.exp(-sigma*np.sum((x-y)**2 / (x+y+1e-6)))

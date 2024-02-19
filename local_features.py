@@ -3,7 +3,6 @@ import numpy as np
 # Function to calculate the Histogram of Oriented Gradients (HOG) for an image
 def calculate_hog(image, local_descriptor = False):
     
-    
     # Convert the image to grayscale
     grayscale_image = np.dot(image, [0.2989, 0.5870, 0.1140])
     

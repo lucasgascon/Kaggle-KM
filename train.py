@@ -5,8 +5,8 @@ from utils import row_to_image, viz_image
 import os
 from SVMs import BinarySVM, SVM_SGD
 from kernels import linear_kernel, polynomial_kernel, gaussian_kernel, sigmoid_kernel, laplacian_kernel, chi2_kernel
-from local_features import calculate_hog, calculate_LocalBinaryPattern
-from global_features import kernelPCA, BoW
+from local_features import calculate_hog, calculate_LocalBinaryPattern, calculate_SIFT
+from global_features import kernelPCA, BoW, FisherVectorGMM
 from tqdm import tqdm
 import argparse
 
@@ -37,13 +37,13 @@ def main(args):
     
     if args.subname == '0':
         if args.kernelSVM == 'gaussian_kernel' or args.kernelPCA == 'gaussian_kernel' or args.kernelSVM == 'laplacian_kernel' or args.kernelPCA == 'laplacian_kernel':
-            if args.bow:
-                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_sigma' + str(args.sigma) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k)
+            if args.bow or args.fishervect:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_sigma' + str(args.sigma) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k) +  '_fishervect' + str(args.fishervect)
             else:
                 args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_sigma' + str(args.sigma) + '_PCA' + str(args.PCA) + '_hog' + str(args.hog) + '_raw' + str(args.raw) + '_lbp' + str(args.lbp)
         else:
-            if args.bow:
-                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k)
+            if args.bow or args.fishervect:
+                args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_PCA' + str(args.PCA) + '_bow' + str(args.bow) + '_k' + str(args.k) + '_fishervect' + str(args.fishervect)
             else:
                 args.subname = args.kernelSVM + '_'+args.kernelPCA+ '_C' + str(args.C) + '_PCA' + str(args.PCA) + '_hog' + str(args.hog) + '_raw' + str(args.raw) + '_lbp' + str(args.lbp)
     
@@ -61,12 +61,12 @@ def main(args):
 
     # For trainset
     train_images = np.array([row_to_image(row.values) for index, row in trainset.iterrows()])
-    train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
+    # train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
     
     
     # For testset
     test_images = np.array([row_to_image(row.values)  for index, row in testset.iterrows()])
-    test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
+    # test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
     
 
     train_vector = None
@@ -95,7 +95,55 @@ def main(args):
     elif args.kernelPCA == 'chi2_kernel':
         kernels[args.kernelPCA] = lambda x,y: chi2_kernel(x,y, params['sigma'])
         
-    
+    if args.bow:
+        if args.hog:
+            print("Calculating HOG features")
+            list_train_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(train_images)]
+            list_test_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(test_images)]
+            args.hog = False
+        elif args.sift:
+            print("Calculating SIFT features")
+            list_train_features = [calculate_SIFT(image) for image in tqdm(train_images)]
+            list_test_features = [calculate_SIFT(image) for image in tqdm(test_images)]
+            args.sift = False
+        
+        print("Calculating Bag of Words features")
+        bow = BoW(args.k)
+        train_features = bow.fit(list_train_features)
+        test_features = bow.predict(list_test_features)
+
+        if train_vector is None:
+            train_vector = train_features
+            test_vector = test_features
+        else:
+            train_vector = np.concatenate((train_vector, train_features), axis=1)
+            test_vector = np.concatenate((test_vector, test_features), axis=1)
+            
+    if args.fishervect:
+        if args.hog:
+            print("Calculating HOG features")
+            list_train_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(train_images)]
+            list_test_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(test_images)]
+            args.hog = False
+        elif args.sift:
+            print("Calculating SIFT features")
+            list_train_features = [calculate_SIFT(image) for image in tqdm(train_images)]
+            list_test_features = [calculate_SIFT(image) for image in tqdm(test_images)]
+            args.sift = False
+        
+        print("Calculating Fisher Vector features")
+        fishvect = FisherVectorGMM(args.k)
+        fishvect.fit(list_train_features)
+        train_features = np.array([fishvect.transform(trainfeatures) for trainfeatures in tqdm(list_train_features)])
+        test_features = np.array([fishvect.transform(testfeatures) for testfeatures in tqdm(list_test_features)])
+
+        if train_vector is None:
+            train_vector = train_features
+            test_vector = test_features
+        else:
+            train_vector = np.concatenate((train_vector, train_features), axis=1)
+            test_vector = np.concatenate((test_vector, test_features), axis=1)
+            
     if args.hog:
         # Calculate the HOG for each image
         print("Calculating HOG features")
@@ -129,22 +177,20 @@ def main(args):
         else:
             train_vector = np.concatenate((train_vector, train_lbs_features), axis=1)
             test_vector = np.concatenate((test_vector, test_lbs_features), axis=1)
-    
-    if args.bow:
-        print("Calculating Bag of Words features")
-        list_train_hog_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(train_images)]
-        list_test_hog_features = [calculate_hog(image,local_descriptor=True) for image in tqdm(test_images)]
-
-        bow = BoW(args.k)
-        train_features = bow.fit(list_train_hog_features)
-        test_features = bow.predict(list_test_hog_features)
-
+            
+    if args.sift:
+        print("Calculating SIFT features")
+        train_sift_features = np.array([calculate_SIFT(image).flatten() for image in tqdm(train_images)])
+        test_sift_features = np.array([calculate_SIFT(image).flatten() for image in tqdm(test_images)])
+        
         if train_vector is None:
-            train_vector = train_features
-            test_vector = test_features
+            train_vector = train_sift_features
+            test_vector = test_sift_features
         else:
-            train_vector = np.concatenate((train_vector, train_features), axis=1)
-            test_vector = np.concatenate((test_vector, test_features), axis=1)
+            train_vector = np.concatenate((train_vector, train_sift_features), axis=1)
+            test_vector = np.concatenate((test_vector, test_sift_features), axis=1)
+    
+
             
             
     if args.PCA != 0:
@@ -296,8 +342,9 @@ def main(args):
                         labels[first_class_label] += 1
                     else:   
                         labels[second_class_label] += 1
-                        
-            predicted_class = max(labels.keys(), key=lambda x: labels[x])
+            # If several labels are predicted, take a random one
+            key_list = np.random.permutation(labels.keys())
+            predicted_class = max(key_list, key=lambda x: labels[x])
             test_predictions.append(predicted_class)
 
         test_predictions_df = pd.DataFrame({'Prediction' : test_predictions})
@@ -331,7 +378,9 @@ def parser_args(parser):
     parser.add_argument('--r', type = float, default = 1., help='r for sigmoid kernel')
     parser.add_argument('--tosubmit', action = 'store_true', help='Choose whether to train on the whole dataset or not')
     parser.add_argument('--bow', action = 'store_true', help='Use Bag of Words features')
-    parser.add_argument('--k', type = int, default = 100, help='Number of clusters for Bag of Words')
+    parser.add_argument('--k', type = int, default = 10, help='Number of clusters for Bag of Words or of GMM components for Fisher Vector')
+    parser.add_argument('--sift', action = 'store_true' , help='Use SIFT features')
+    parser.add_argument('--fishervect', action = 'store_true', help='Use fisher vector features')
 
     return parser
 

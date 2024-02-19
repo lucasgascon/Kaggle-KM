@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.ndimage import gaussian_filter, zoom
+import cv2
 
 # Function to calculate the Histogram of Oriented Gradients (HOG) for an image
 def calculate_hog(image, local_descriptor = False):
@@ -111,77 +113,93 @@ def calculate_LocalBinaryPattern(image):
             img_lbp[i,j] = np.sum(neigh_val * power_base)
             
     return img_lbp.flatten()
-"""
-# À Vérifier !!!!!
-def SIFT(image):
+
+
+def calculate_SIFT(image, sigma = 1.6, num_octaves = 4, num_scales = 5, handmade = False):
     # Convert the image to grayscale
     grayscale_image = np.dot(image, [0.2989, 0.5870, 0.1140])
     
-    # Define the scale space parameters
-    num_octaves = 4
-    num_scales = 5
-    sigma = 1.6
-    
-    # Create the scale space
-    scale_space = np.zeros((num_octaves, num_scales, grayscale_image.shape[0], grayscale_image.shape[1]))
-    octave_images = []
-    
-    # Generate the octave images
-    for octave in range(num_octaves):
-        octave_images.append(grayscale_image)
-        for scale in range(1, num_scales):
-            scaled_image = cv2.resize(octave_images[octave], None, fx=1/(2**scale), fy=1/(2**scale))
-            scaled_image = cv2.GaussianBlur(scaled_image, (0, 0), sigmaX=sigma*(2**scale), sigmaY=sigma*(2**scale))
+    if handmade:
+        # Create the scale space
+        octave_images = []
+        
+        """Generate base image from input image by upsampling by 2 in both directions and blurring
+        """
+        # Upsampling by a factor of 2
+        image = zoom(grayscale_image, (2, 2, 1), order=1)
+
+        k = 2**(1/num_scales)
+        # Generate the octave images
+        pyr_images = []
+        for octave in range(num_octaves):
+            new_sigma = sigma
+            scaled_image = zoom(image, (1/2**(octave+1),1/2**(octave+1),1), order=1)
             octave_images.append(scaled_image)
-    
-    # Calculate the Difference of Gaussians (DoG)
-    dog = np.zeros((num_octaves, num_scales-1, grayscale_image.shape[0], grayscale_image.shape[1]))
-    for octave in range(num_octaves):
-        for scale in range(num_scales-1):
-            dog[octave, scale] = octave_images[octave][:, :] - octave_images[octave][scale+1][:, :]
-    
-    # Find the keypoints
-    keypoints = []
-    for octave in range(num_octaves):
-        for scale in range(1, num_scales-2):
-            for i in range(1, dog[octave, scale].shape[0]-1):
-                for j in range(1, dog[octave, scale].shape[1]-1):
-                    if is_extremum(dog, octave, scale, i, j):
-                        keypoints.append((i, j))
-    
-    # Compute the descriptors
-    descriptors = []
-    for keypoint in keypoints:
-        descriptor = compute_descriptor(grayscale_image, keypoint)
-        descriptors.append(descriptor)
-    
-    return np.array(descriptors)
+            for scale in range(1, num_scales):
+                blurred_image = gaussian_filter(scaled_image, sigma=(sigma*(2**scale), sigma*(2**scale)))
+                pyr_images.append(blurred_image)
+                new_sigma = new_sigma * k
+        
+        # Calculate the Difference of Gaussians (DoG)
+        dog = []
+        for octave in range(num_octaves):
+            octave_dogs = np.zeros((num_scales-1, pyr_images[octave*num_scales].shape[0], pyr_images[octave*num_scales].shape[1]))
+            for scale in range(num_scales-1):
+                octave_dogs[scale,:,:] = pyr_images[octave+scale]- pyr_images[octave+scale+1]
+            dog.append(octave_dogs)
+        
+        
+        # Find the keypoints
+        keypoints = []
+        for octave in range(num_octaves):
+            for scale in range(1, num_scales-2):
+                for i in range(1, dog[octave+scale].shape[0]-1):
+                    for j in range(1, dog[octave+scale].shape[1]-1):
+                        if is_extremum(dog, octave, scale, i, j):
+                            keypoints.append((i, j))
+        
+        # Compute the descriptors
+        descriptors = []
+        for keypoint in keypoints:
+            descriptor = compute_descriptor(grayscale_image, keypoint)
+            descriptors.append(descriptor)
+        return np.array(descriptors)
+    else:
+        rescaled_image = (image*255).astype(dtype=np.uint8)
+        cv2_image = cv2.cvtColor(rescaled_image, cv2.COLOR_RGB2GRAY) 
+        sift = cv2.SIFT_create()
+        keypoints, descriptors = sift.detectAndCompute(cv2_image, None)
+        if descriptors is None:
+            return np.zeros((1, 128))
+        return descriptors
 
 
 def is_extremum(dog, octave, scale, i, j):
-    value = dog[octave, scale, i, j]
+    value = dog[octave+scale][i, j]
     if value > 0:
         for x in range(-1, 2):
             for y in range(-1, 2):
-                if dog[octave, scale-1, i+x, j+y] >= value or dog[octave, scale+1, i+x, j+y] >= value:
+                if dog[octave+scale-1][i+x, j+y] >= value or dog[octave+scale+1][i+x, j+y] >= value:
                     return False
     else:
         for x in range(-1, 2):
             for y in range(-1, 2):
-                if dog[octave, scale-1, i+x, j+y] <= value or dog[octave, scale+1, i+x, j+y] <= value:
+                if dog[octave+scale-1][i+x, j+y]<= value or dog[octave+scale+1][i+x, j+y] <= value:
                     return False
     return True
 
-
+# À revoir
 def compute_descriptor(image, keypoint):
     descriptor = []
     x, y = keypoint
     patch = image[x-8:x+8, y-8:y+8]
-    patch = cv2.resize(patch, (16, 16))
+    patch = patch.reshape(16, 16)
     patch = patch.flatten()
     descriptor.append(patch)
     return np.array(descriptor)
+
+
     
-""" 
+
             
     

@@ -190,7 +190,7 @@ def main(args):
             test_vector = np.concatenate((test_vector, test_sift_features), axis=1)
     
     # Split the data into training and validation sets
-    if not args.tosubmit:
+    if not args.to_submit:
         X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state = 29)
     else:
         X_train = train_vector
@@ -238,7 +238,7 @@ def main(args):
             models[class_label] = model
 
         # Predict the class labels for the validation set
-        if not args.tosubmit:
+        if not args.to_submit:
             predictions = []
             for features in X_val:  
                 if args.SVM == 'SGD':
@@ -304,7 +304,7 @@ def main(args):
                 # Fit the model on the training data
                 model.fit(X_train_partial, binary_labels)    
                 models[str(first_class_label)+"_"+str(second_class_label)] = model
-        if not args.tosubmit:              
+        if not args.to_submit:              
             predictions = []
             for features in X_val:
                 labels = {key: 0 for key in np.sort(np.unique(train_labels))}
@@ -358,7 +358,7 @@ def main(args):
         submission_filepath = os.path.join("submissions", submission_filename)
         test_predictions_df.to_csv(submission_filepath, index_label='Id')
         print("Submission saved at:", submission_filepath)
-    if not args.tosubmit:
+    if not args.to_submit:
         return accuracy
     else:
         return None
@@ -384,7 +384,7 @@ def parser_args(parser):
     parser.add_argument('--subname', type = str, default = '0', help='Name of the submission file')
     parser.add_argument('--gamma', type = float, default = 1., help='Gamma for sigmoid kernel')
     parser.add_argument('--r', type = float, default = 1., help='r for sigmoid kernel')
-    parser.add_argument('--tosubmit', action = 'store_true', help='Choose whether to train on the whole dataset or not')
+    parser.add_argument('--to_submit', action = 'store_true', help='Choose whether to train on the whole dataset or not')
     parser.add_argument('--bow', action = 'store_true', help='Use Bag of Words features')
     parser.add_argument('--k', type = int, default = 10, help='Number of clusters for Bag of Words or of GMM components for Fisher Vector')
     parser.add_argument('--sift', action = 'store_true' , help='Use SIFT features')

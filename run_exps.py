@@ -63,8 +63,8 @@ def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C,
 def run_exps():
     accuracies = {}
     i = 0
-    file_path = 'experiment_results.json'
-    for num_exp, params in experiments.items():
+    file_path = 'all_experiment_results.json'
+    for ind, (num_exp, params) in enumerate(experiments.items()):
         print('Running experiment', num_exp)
         parser = argparse.ArgumentParser()
         parser = train_parser_args(parser) 
@@ -74,7 +74,7 @@ def run_exps():
         accuracy = train_main(args)
         print('Accuracy:', accuracy)
         accuracies[num_exp] = accuracy
-        if num_exp %20 == 0:
+        if ind %20 == 0 and ind != 0:
             # Save the dictionary to a JSON file
             with open(f'experiment_results_{i}.json', 'w') as f:
                 json.dump(accuracies, f)

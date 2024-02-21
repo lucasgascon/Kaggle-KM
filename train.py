@@ -191,7 +191,7 @@ def main(args):
     
     # Split the data into training and validation sets
     if not args.tosubmit:
-        X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1)
+        X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state = 29)
     else:
         X_train = train_vector
         y_train = train_labels

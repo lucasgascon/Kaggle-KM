@@ -101,8 +101,9 @@ class BinarySVM(object):
             h = cvxopt.matrix(np.hstack((tmp1, tmp2)))
 
         # solve QP problem
+        cvxopt.solvers.options['show_progress'] = False
         solution = cvxopt.solvers.qp(P, q, G, h, A, b)
-
+     
         # Lagrange multipliers
         a = np.ravel(solution['x'])
 

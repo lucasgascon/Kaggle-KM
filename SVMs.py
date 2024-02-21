@@ -34,14 +34,16 @@ class SVM_SGD:
         
 
         for i in range(self.epochs): 
-            gradient = self.ones - y_mul_kernal.dot(self.alpha) # 1 – yk ∑ αj yj K(xj, xk)
-            self.alpha += self.learning_rate * gradient # α = α + η*(1 – yk ∑ αj yj K(xj, xk)) to maximize
+            gradient = - self.ones + y_mul_kernal.dot(self.alpha) # 1 – yk ∑ αj yj K(xj, xk)
+            self.alpha -= self.learning_rate * gradient # α = α + η*(1 – yk ∑ αj yj K(xj, xk)) to maximize
             self.alpha[self.alpha > self.C] = self.C # 0<α<C
             self.alpha[self.alpha < 0] = 0 # 0<α<C
 
-            loss = np.sum(self.alpha) - 0.5 * np.sum(np.outer(self.alpha, self.alpha) * y_mul_kernal) # ∑αi – (1/2) ∑i ∑j αi αj yi yj K(xi, xj)
+            loss = - np.sum(self.alpha) + 0.5 * np.sum(np.outer(self.alpha, self.alpha) * y_mul_kernal) # ∑αi – (1/2) ∑i ∑j αi αj yi yj K(xi, xj)
             
         alpha_index = np.where((self.alpha) > 0 & (self.alpha < self.C))[0]
+        self.support_vectors = X[alpha_index,:]
+        self.alpha_y = self.alpha[alpha_index] * y[alpha_index]
         
         # for intercept b, we will only consider α which are 0<α<C 
         b_list = []        
@@ -52,18 +54,19 @@ class SVM_SGD:
         self.b = np.mean(b_list) # avgC≤αi≤0{ yi – ∑αjyj K(xj, xi) }
             
     def predict(self, X):
-        return np.sign(self._decision_function(X))
+        return self._decision_function(X) 
     
     def score(self, X, y):
         y_hat = self.predict(X)
         return np.mean(y == y_hat)
     
     def _decision_function(self, X):
-        n_samples, n_features = self.X.shape
+        n_samples, n_features = self.support_vectors.shape
         temp_vect = np.zeros(n_samples)
         for i in range(n_samples):
-            temp_vect[i] = self.kernel(self.X[i,:], X)
-        return (self.alpha * self.y).dot(temp_vect) + self.b
+            temp_vect[i] = self.kernel(self.support_vectors[i,:], X)
+        d =  (self.alpha_y).dot(temp_vect) + self.b    
+        return 2 * (d+self.b> 0) - 1
 
 
 class BinarySVM(object):

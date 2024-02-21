@@ -7,7 +7,7 @@ from scipy.special import logsumexp
 
 class kernelPCA():
     
-    def __init__(self,kernel, n_components = -1, plt = False): 
+    def __init__(self,kernel, n_components = -1, plt = False, with_norm = False): 
                                     
         self.kernel = kernel          # <---
         self.alpha = None # Matrix of shape N times d representing the d eingenvectors alpha corresp
@@ -15,6 +15,7 @@ class kernelPCA():
         self.n_components = n_components ## Number of principal components
         self.lmbd = None # Eigenvalues
         self.plt = plt
+        self.with_norm = with_norm
         
     def fit(self,X):
         
@@ -27,51 +28,56 @@ class kernelPCA():
             
         # Center the kernel matrix
         N = K.shape[0]
-        one_n = np.ones((N,N)) / N
-        K = K - one_n.dot(K) - K.dot(one_n) + one_n.dot(K).dot(one_n)
-    
+        one_N = np.ones((N,N)) / N
+        if self.with_norm:
+            Kcentered = (np.eye(N) - one_N)@(K)@(np.eye(N) - one_N)
+        else:
+            Kcentered = K
+        
         # Obtaining eigenpairs from the centered kernel matrix
-        eigvals, eigvecs = linalg.eigh(K)
+        eigvals, eigvecs = np.linalg.eigh(Kcentered)
+        
+        self.lmbda = eigvals[::-1] # Descending order
+        self.alpha = eigvecs[:,::-1]
+       
         
         if self.n_components < 0:
             self.n_components = 0
             ratio = 0
             while ratio < 0.8:
                 self.n_components += 1
-                ratio = sum(eigvals[-i] for i in range(1,self.n_components+1))/sum(eigvals)
+                ratio = sum(self.lmbda[i] for i in range(0,self.n_components))/sum(self.lmbda)
 
 
-            
-        eig_pc = np.column_stack([eigvecs[:,-i]/np.sqrt(eigvals[-i]) for i in range(1,self.n_components+1)])
-        self.alpha = eig_pc # Matrix of shape N times d representing the d eingenvectors alpha corresp
-        X_pca = np.zeros(((n_samples, self.n_components)))
-        for i in range(self.n_components):
-            X_pca[:,i] = K@eig_pc[:,i]
-        self.lmbd = eigvals
-        return X_pca
+
+        return  K@self.alpha[:,:self.n_components]
     
     def transform(self,x):
-        n_samples, n_features = x.shape
-        X_pca = np.zeros(((n_samples, self.n_components)))
         
-        K = np.zeros((n_samples, self.support.shape[0]))
+        n_samples, n_features = x.shape
+        n = self.support.shape[0]
+
+        K = np.zeros((n_samples, n))
         for i in range(n_samples):
-            for j in range(self.support.shape[0]):
+            for j in range(n):
                 K[i,j] = self.kernel(x[i], self.support[j])
-                
-        for i in range(self.n_components):
-            X_pca[:,i] = K@self.alpha[:,i]
+        
+        one_N =  np.ones((n_samples,n_samples))/n_samples
+
+        one_n =  np.ones((n,n))/n
+        if self.with_norm:
+            K= (np.eye(n_samples) - one_N)@(K)@(np.eye(n) - one_n)
             
         if not self.plt:
-            return X_pca
+            return  K@self.alpha[:,:self.n_components]
         else:
             explained_var = [sum(self.lmbd[-i] for i in range(1,i+1))/sum(self.lmbd) for i in range(1, len(self.lmbd)+1)]
             plt.figure()
             plt.plot(np.arange(1, len(self.lmbd)+1),explained_var)
             plt.xlabel('Number of components')
             plt.ylabel('Explained variance')
-            plt.title('Explained variance vs Number of components taken in the PCA for kernel ', kernel.__name__)
-            return X_pca
+            plt.title('Explained variance vs Number of components taken in the PCA for kernel ', self.kernel.__name__)
+            return  K@self.alpha[:,:self.n_components]
 
 
 class Kmeans():

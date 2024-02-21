@@ -58,7 +58,7 @@ def main(args):
     # For testset
     testset = pd.read_csv('data/Xte.csv', header=None)
     testset = testset.iloc[:,:-1]
-
+        
     # For trainset
     train_images = np.array([row_to_image(row.values) for index, row in trainset.iterrows()])
     # train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
@@ -68,7 +68,6 @@ def main(args):
     test_images = np.array([row_to_image(row.values)  for index, row in testset.iterrows()])
     # test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
     
-
     train_vector = None
     test_vector = None
     
@@ -180,8 +179,8 @@ def main(args):
             
     if args.sift:
         print("Calculating SIFT features")
-        train_sift_features = np.array([calculate_SIFT(image).flatten() for image in tqdm(train_images)])
-        test_sift_features = np.array([calculate_SIFT(image).flatten() for image in tqdm(test_images)])
+        train_sift_features = np.array([np.mean(calculate_SIFT(image),axis=0)for image in tqdm(train_images)])
+        test_sift_features = np.array([np.mean(calculate_SIFT(image),axis=0) for image in tqdm(test_images)])
         
         if train_vector is None:
             train_vector = train_sift_features
@@ -190,25 +189,30 @@ def main(args):
             train_vector = np.concatenate((train_vector, train_sift_features), axis=1)
             test_vector = np.concatenate((test_vector, test_sift_features), axis=1)
     
-
-            
-            
-    if args.PCA != 0:
-        kernel_pca = kernelPCA(kernels[args.kernelPCA], args.PCA) 
-        train_vector = kernel_pca.fit(train_vector)
-        # If 80% enables to reach the same number of components
-        test_vector = kernel_pca.transform(test_vector)
-        
-
     # Split the data into training and validation sets
     if not args.tosubmit:
-        X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1, random_state=42)
+        X_train, X_val, y_train, y_val = train_test_split(train_vector, train_labels, test_size=0.1)
     else:
         X_train = train_vector
         y_train = train_labels
 
+    if args.PCA != 0:
+        kernel_pca = kernelPCA(kernels[args.kernelPCA], args.PCA, with_norm = args.with_norm) 
+        
+        # train_vector = train_vector - np.mean(train_vector, axis=0)
+        # test_vector = test_vector - np.mean(test_vector, axis=0)
+        X_train = kernel_pca.fit(X_train)
+        
+        # If 80% enables to reach the same number of components
+        if not args.to_submit:
+            X_val = kernel_pca.transform(X_val)
+            
+        test_vector = kernel_pca.transform(test_vector)
+        
+
     print('KernelSVM:', args.kernelSVM,'    KernelPCA:', args.kernelPCA, )
-    print('Features HOG:', args.hog,'   Features raw:', args.raw, ' Features LBP:', args.lbp, ' Features BOW:', args.bow)
+    print('Features HOG:', args.hog,'   Features raw:', args.raw, ' Features LBP:', args.lbp, ' Features BOW:',
+          args.bow, ' Features SIFT:', args.sift, ' Features FisherVector:', args.fishervect)
     print('Dimension PCA:', train_vector.shape[1])
     print('C:', args.C, '   Sigma:', args.sigma)
     
@@ -343,7 +347,7 @@ def main(args):
                     else:   
                         labels[second_class_label] += 1
             # If several labels are predicted, take a random one
-            key_list = np.random.permutation(labels.keys())
+            key_list = np.random.permutation(list(labels.keys()))
             predicted_class = max(key_list, key=lambda x: labels[x])
             test_predictions.append(predicted_class)
 
@@ -354,6 +358,10 @@ def main(args):
         submission_filepath = os.path.join("submissions", submission_filename)
         test_predictions_df.to_csv(submission_filepath, index_label='Id')
         print("Submission saved at:", submission_filepath)
+    if not args.tosubmit:
+        return accuracy
+    else:
+        return None
  
     
 """Parser arguments
@@ -381,6 +389,7 @@ def parser_args(parser):
     parser.add_argument('--k', type = int, default = 10, help='Number of clusters for Bag of Words or of GMM components for Fisher Vector')
     parser.add_argument('--sift', action = 'store_true' , help='Use SIFT features')
     parser.add_argument('--fishervect', action = 'store_true', help='Use fisher vector features')
+    parser.add_argument('--with_norm', action = 'store_true', help='Normalize gram matrix in PCA')
 
     return parser
 

@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from experiments import experiments
+from new_experiments import experiments
 from train import main as train_main
 from train import parser_args as train_parser_args
 import json
@@ -69,9 +69,24 @@ def run_exps():
         parser = argparse.ArgumentParser()
         parser = train_parser_args(parser) 
         params['subname'] = f'exp_{num_exp}'
-        args = parser.parse_args(create_commands(**params))
-        print('Command:', args)
-        accuracy = train_main(args)
+
+        try:               
+            args = parser.parse_args(create_commands(**params))
+            print('Command:', args)
+            accuracy = train_main(args)
+        except:
+            print('Error in experiment', num_exp)
+            print('Try with SGD instead of CVXOPT')
+            try:
+                params['SVM'] = 'SGD'
+                args = parser.parse_args(create_commands(**params))
+                print('Command:', args)
+                accuracy = train_main(args)
+            except:
+                print('Error in experiment', num_exp)
+                print('Already tried with both SVMs and failed')
+                accuracy = 0
+                
         print('Accuracy:', accuracy)
         accuracies[num_exp] = accuracy
         if ind %20 == 0 and ind != 0:

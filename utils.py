@@ -45,4 +45,9 @@ def average_submissions(dir_path = "submissions/averaging", new_name = "averaged
         test_predictions.append(np.random.choice(labels[ids_max_count],1)[0])
     test_predictions_df = pd.DataFrame({'Prediction' : test_predictions},index = dict_averaged_label.keys())
     test_predictions_df.to_csv('submissions/'+new_name, index_label='Id')
+    
+if __name__ == "__main__":
+    # Example usage
+    average_submissions()
+    print("Averaging done!")
 

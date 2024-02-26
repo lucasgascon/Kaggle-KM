@@ -5,12 +5,17 @@ import os
 
 
 # Function to convert a row to an image
-def row_to_image(row):
+def row_to_image(row, normalize = True):
     # Split the row into three parts, for R, G, and B channels
-    R = (row[:1024].reshape(32, 32) - np.min(row[:1024])) / (np.max(row[:1024]) - np.min(row[:1024]))
-    G = (row[1024:2048].reshape(32, 32) - np.min(row[1024:2048])) / (np.max(row[1024:2048]) - np.min(row[1024:2048]))
-    B = (row[2048:].reshape(32, 32) - np.min(row[2048:])) / (np.max(row[2048:]) - np.min(row[2048:]))
-    # Stack the channels along the last dimension to form an RGB image
+    if normalize:
+        R = (row[:1024].reshape(32, 32) - np.min(row[:1024])) / (np.max(row[:1024]) - np.min(row[:1024]))
+        G = (row[1024:2048].reshape(32, 32) - np.min(row[1024:2048])) / (np.max(row[1024:2048]) - np.min(row[1024:2048]))
+        B = (row[2048:].reshape(32, 32) - np.min(row[2048:])) / (np.max(row[2048:]) - np.min(row[2048:]))
+        # Stack the channels along the last dimension to form an RGB image
+    else:
+        R = row[:1024].reshape(32, 32)
+        G = row[1024:2048].reshape(32, 32)
+        B = row[2048:].reshape(32, 32)
     image = np.stack([R, G, B], axis=-1)
     return image
 

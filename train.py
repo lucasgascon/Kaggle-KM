@@ -20,7 +20,7 @@ params = {'C': 1.0,
         }
 kernels = {'linear_kernel': linear_kernel,
            'polynomial_kernel': polynomial_kernel,
-           'gaussian_kernel': gaussian_kernel,
+           'gaussian_kernel': gaussian_kernel, 
            'sigmoid_kernel': sigmoid_kernel,
            'laplacian_kernel': laplacian_kernel}
     
@@ -59,14 +59,20 @@ def main(args):
     testset = pd.read_csv('data/Xte.csv', header=None)
     testset = testset.iloc[:,:-1]
         
-    # For trainset
-    train_images = np.array([row_to_image(row.values) for index, row in trainset.iterrows()])
-    # train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
-    
-    
-    # For testset
-    test_images = np.array([row_to_image(row.values)  for index, row in testset.iterrows()])
-    # test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
+
+    if args.normalize:
+        # For trainset
+        train_images = np.array([row_to_image(row.values) for index, row in trainset.iterrows()])
+        # train_images = (train_images - np.mean(train_images, axis=0))/np.std(train_images, axis=0)
+
+        # For testset
+        test_images = np.array([row_to_image(row.values)  for index, row in testset.iterrows()])
+        # test_images = (test_images - np.mean(test_images, axis=0))/np.std(test_images, axis=0)
+    else:
+        # For trainset
+        train_images = np.array([row_to_image(row.values, normalize=False) for index, row in trainset.iterrows()])
+        # For testset
+        test_images = np.array([row_to_image(row.values, normalize = False)  for index, row in testset.iterrows()])
     
     train_vector = None
     test_vector = None
@@ -390,6 +396,7 @@ def parser_args(parser):
     parser.add_argument('--sift', action = 'store_true' , help='Use SIFT features')
     parser.add_argument('--fishervect', action = 'store_true', help='Use fisher vector features')
     parser.add_argument('--with_norm', action = 'store_true', help='Normalize gram matrix in PCA')
+    parser.add_argument('--normalize', action = 'store_true', help='Normalize the images')
 
     return parser
 

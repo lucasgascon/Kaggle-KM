@@ -279,7 +279,10 @@ def main(args):
         test_predictions_df
 
         # Save the predictions
-        submission_filename = "submission_"+args.subname+".csv"
+        if not args.to_submit:
+            submission_filename = "submission_"+args.subname+".csv"
+        else:
+            submission_filename = "submission_"+args.subname+"_to_submit.csv"
         submission_filepath = os.path.join("submissions", submission_filename)
         test_predictions_df.to_csv(submission_filepath, index_label='Id')
 
@@ -359,8 +362,10 @@ def main(args):
 
         test_predictions_df = pd.DataFrame({'Prediction' : test_predictions})
         test_predictions_df.index += 1
-
-        submission_filename = "submission_"+args.subname+".csv"
+        if not args.to_submit:
+            submission_filename = "submission_"+args.subname+".csv"
+        else:
+            submission_filename = "submission_"+args.subname+"_to_submit.csv"
         submission_filepath = os.path.join("submissions", submission_filename)
         test_predictions_df.to_csv(submission_filepath, index_label='Id')
         print("Submission saved at:", submission_filepath)

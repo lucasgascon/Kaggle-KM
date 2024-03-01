@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from numpy import linalg
 from tqdm import trange, tqdm
 from scipy.special import logsumexp
+from skimage.feature import fisher_vector, ORB, learn_gmm
 
 
 class kernelPCA():
@@ -245,42 +246,49 @@ def multivariate_normal_density(X, mu, Sigma):
 
 
 class FisherVectorGMM:
-    def __init__(self, n_gaussians, n_iter = 100):
+    def __init__(self, n_gaussians, n_iter = 100, handmade = False):
         self.n_gaussians = n_gaussians
         self.n_iter = n_iter
         self.gmm = None
-        self.fisher_vector = None
+        self.handmade = handmade
         
     def fit(self, local_descriptors_list):
         # Fit a GMM to the local descriptors
-        self.gmm = EM_algorithm(local_descriptors_list, self.n_gaussians)
+        if self.handmade:
+            self.gmm = EM_algorithm(local_descriptors_list, self.n_gaussians)
+        else:
+            gmm = learn_gmm(local_descriptors_list, n_modes = self.n_gaussians)
+            self.gmm = gmm
 
     def transform(self, local_descriptors):
         # Compute the Fisher Vector for the given local descriptors
         n_gaussians = self.n_gaussians
         gmm = self.gmm
-        T = local_descriptors.shape[0]
-        S0 = np.zeros(n_gaussians)
-        S1 = np.zeros((n_gaussians, local_descriptors.shape[1]))
-        S2 = np.zeros((n_gaussians, local_descriptors.shape[1]))
-        for t in range(T):
-            x = local_descriptors[t,:]
-            # compute u_lambda in the log domain
-            logsum = gmm['alpha'][1]*multivariate_normal_density(x, gmm['mu'][1,:], gmm['sigma'][1,:])
-            for i in range(1,n_gaussians):
-                logsum += np.log(1+np.exp(logsum-np.log(gmm['alpha'][i] * multivariate_normal_density(x, gmm['mu'][i,:],gmm['sigma'][i,:]))))
-            
-            for k in range(n_gaussians):
-                post_prob = np.exp(np.log(gmm['alpha'][k] * 
-                                            multivariate_normal_density(x, gmm['mu'][k,:], gmm['sigma'][k,:]))-logsum)
-                S0[k] += post_prob
-                S1[k,:] += post_prob * x
-                S2[k,:] += post_prob * (x ** 2)
+        if self.handmade:
+            T = local_descriptors.shape[0]
+            S0 = np.zeros(n_gaussians)
+            S1 = np.zeros((n_gaussians, local_descriptors.shape[1]))
+            S2 = np.zeros((n_gaussians, local_descriptors.shape[1]))
+            for t in range(T):
+                x = local_descriptors[t,:]
+                # compute u_lambda in the log domain
+                logsum = gmm['alpha'][1]*multivariate_normal_density(x, gmm['mu'][1,:], gmm['sigma'][1,:])
+                for i in range(1,n_gaussians):
+                    logsum += np.log(1+np.exp(logsum-np.log(gmm['alpha'][i] * multivariate_normal_density(x, gmm['mu'][i,:],gmm['sigma'][i,:]))))
                 
-        g_alpha = (S0 - T * gmm['alpha'])/(np.sqrt(gmm['alpha']))
-        g_mu = (S1 - (gmm['mu'] * S0.reshape(-1,1)))/(np.sqrt(gmm['alpha']).reshape(-1,1)*gmm['sigma'])
-        g_sigma = (S2 - 2 * gmm['mu'] * S1 + (gmm['mu'] ** 2 - gmm['sigma']**2)* S0.reshape(-1,1))/(np.sqrt(2 * gmm['alpha']).reshape(-1,1)*gmm['sigma']**2)
-        fisher_vector = np.concatenate((g_alpha, g_mu.flatten(), g_sigma.flatten()))
-        fisher_vector = np.sign(fisher_vector) * np.sqrt(np.abs(fisher_vector))
-        fisher_vector /= np.sqrt(np.dot(fisher_vector, fisher_vector))
-        return fisher_vector
+                for k in range(n_gaussians):
+                    post_prob = np.exp(np.log(gmm['alpha'][k] * 
+                                                multivariate_normal_density(x, gmm['mu'][k,:], gmm['sigma'][k,:]))-logsum)
+                    S0[k] += post_prob
+                    S1[k,:] += post_prob * x
+                    S2[k,:] += post_prob * (x ** 2)
+                    
+            g_alpha = (S0 - T * gmm['alpha'])/(np.sqrt(gmm['alpha']))
+            g_mu = (S1 - (gmm['mu'] * S0.reshape(-1,1)))/(np.sqrt(gmm['alpha']).reshape(-1,1)*gmm['sigma'])
+            g_sigma = (S2 - 2 * gmm['mu'] * S1 + (gmm['mu'] ** 2 - gmm['sigma']**2)* S0.reshape(-1,1))/(np.sqrt(2 * gmm['alpha']).reshape(-1,1)*gmm['sigma']**2)
+            fish_vect = np.concatenate((g_alpha, g_mu.flatten(), g_sigma.flatten()))
+            fish_vect = np.sign(fish_vect) * np.sqrt(np.abs(fish_vect))
+            fish_vect /= np.sqrt(np.dot(fish_vect, fish_vect))
+        else:
+            fishvect = fisher_vector(local_descriptors, self.gmm)
+        return fishvect

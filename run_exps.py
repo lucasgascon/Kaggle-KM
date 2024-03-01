@@ -3,10 +3,11 @@ import numpy as np
 from last_experiments import experiments
 from train import main as train_main
 from train import parser_args as train_parser_args
+# from last_experiments import to_submit
 import json
     
 def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C, 
-                    sigma, p, subname, gamma, r, bow, k, sift, fishervect, with_norm):
+                    sigma, p, subname, gamma, r, bow, k, sift, fishervect, with_norm, normalize, to_submit = False):
     commands = []
     if hog:
         commands.append('--hog')
@@ -58,12 +59,16 @@ def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C,
         commands.append('--fishervect')
     if with_norm:
         commands.append('--with_norm')
+    if normalize:
+        commands.append('--normalize')
+    if to_submit:
+        commands.append('--to_submit')
     return commands
     
 def run_exps():
     accuracies = {}
     i = 0
-    file_path = 'all_experiment_results_final.json'
+    file_path = 'all_experiment_results_not_handmade.json'
     for ind, (num_exp, params) in enumerate(experiments.items()):
         print('Running experiment', num_exp)
         parser = argparse.ArgumentParser()
@@ -75,7 +80,9 @@ def run_exps():
             print('Command:', args)
             accuracy = train_main(args)
         except:
+
             print('Error in experiment', num_exp)
+
             print('Try with SGD instead of CVXOPT')
             try:
                 params['SVM'] = 'SGD'
@@ -101,6 +108,18 @@ def run_exps():
     with open(file_path, 'w') as f:
         json.dump(accuracies, f)
         
+def create_submit_files():
+
+    for ind, (num_exp, params) in enumerate(to_submit.items()):
+        print('Running experiment', num_exp)
+        parser = argparse.ArgumentParser()
+        parser = train_parser_args(parser) 
+        params['subname'] = f'exp_{num_exp}'
+        args = parser.parse_args(create_commands(**params))
+        print('Command:', args)
+        train_main(args)
+       
+    
 if __name__ == "__main__":
     # Example usage
     run_exps()

@@ -5,7 +5,7 @@ import os
 
 
 if __name__ == "__main__":
-    create_submit_files(startmode = True)
+    # create_submit_files(startmode = True)
     average_submissions(dir_path = "averaging",new_name = 'Yte.csv')
     files = os.listdir('averaging')
     for file in files:

@@ -463,7 +463,13 @@ def main(args):
             submission_filename = "submission_"+args.subname+"_to_submit.csv"
         print("Submission saved at:", submission_filename)
         if args.startmode:
-            os.mkdir('averaging')
+            if os.path.isdir('averaging'):
+                print(f"{'averaging'} exists.")
+            else:
+                os.mkdir('averaging')
+                print(f"{'averaging'} does not exist.")
+                print(f"{'averaging'} created.")
+
             submission_filepath = os.path.join(
                 "averaging", submission_filename)
             test_predictions_df.to_csv(submission_filepath, index_label='Id')

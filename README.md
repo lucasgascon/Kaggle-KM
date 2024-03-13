@@ -7,10 +7,9 @@ Welcome to our Kaggle challenge for image classification with 10 labels using ma
 ## How to run 
 
 You can test several experiments by using the train.py script and choosing the wanted argument. You can run the algorithm which provides us with our best submission file on the leaderboard with the following command:
-'''
-python start.py
-'''
-
+   ```
+   python start.py
+   ```
 
 ## Contact Information
 

@@ -4,6 +4,7 @@ from scipy import linalg
 from global_features import KernelPCA
 from kernels import GaussianKernel, GaussianKernelForAngle
 
+
 class FeatureVectorProjection:
     def __init__(self, kernel):
         self.kernel = kernel
@@ -22,6 +23,7 @@ class FeatureVectorProjection:
         K = self.kernel.build_K(X, self.basis)
         return K @ self.G
 
+
 class KernelDescriptorsExtractor:
     def __init__(self, gamma_o=5, gamma_c=4, gamma_b=2, gamma_p=3,
                  grid_o_dim=25, grid_c_dims=(5, 5, 5), grid_p_dims=(5, 5),
@@ -32,8 +34,10 @@ class KernelDescriptorsExtractor:
         self.projector_p = self.init_position_basis(gamma_p, grid_p_dims)
         self.epsilon_g = epsilon_g
         self.epsilon_s = epsilon_s
-        self.kpca_op = self.init_kpca(self.projector_o, self.projector_p, GaussianKernel(0.4))
-        self.kpca_cp = self.init_kpca(self.projector_c, self.projector_p, GaussianKernel(0.4))
+        self.kpca_op = self.init_kpca(
+            self.projector_o, self.projector_p, GaussianKernel(0.4))
+        self.kpca_cp = self.init_kpca(
+            self.projector_c, self.projector_p, GaussianKernel(0.4))
 
     def init_basis(self, kernel, X):
         projector = FeatureVectorProjection(kernel)
@@ -50,7 +54,7 @@ class KernelDescriptorsExtractor:
         print("Initializing basis for color")
         kernel = GaussianKernel(1 / np.sqrt(2 * gamma))
         steps = [1.0 / (dim - 1) for dim in grid_dims]
-        X = np.mgrid[0:1 + steps[0]:steps[0], 0:1 + steps[1]:steps[1], 0:1 + steps[2]:steps[2]].reshape(3, -1).T
+        X = np.mgrid[0:1 + steps[0]:steps[0], 0:1 + steps[1]                     :steps[1], 0:1 + steps[2]:steps[2]].reshape(3, -1).T
         return self.init_basis(kernel, X)
 
     def init_binary_pattern_basis(self, gamma):
@@ -63,31 +67,36 @@ class KernelDescriptorsExtractor:
         print("Initializing basis for positions")
         kernel = GaussianKernel(1 / np.sqrt(2 * gamma))
         steps = [1.0 / (dim - 1) for dim in grid_dims]
-        X = np.mgrid[0:1 + steps[0]:steps[0], 0:1 + steps[1]:steps[1]].reshape(2, -1).T
+        X = np.mgrid[0:1 + steps[0]:steps[0], 0:1 +
+                     steps[1]:steps[1]].reshape(2, -1).T
         return self.init_basis(kernel, X)
 
     def init_kpca(self, projector1, projector2, kernel):
         X1 = projector1.predict(projector1.basis)
         X2 = projector2.predict(projector2.basis)
         kdes_dim = X1.shape[1] * X2.shape[1]
-        X_kpca = np.array([np.kron(x, y) for x in X1 for y in X2]).reshape(-1, kdes_dim)
+        X_kpca = np.array([np.kron(x, y)
+                          for x in X1 for y in X2]).reshape(-1, kdes_dim)
         kpca = KernelPCA(kernel)
         kpca.fit(X_kpca)
         return kpca
-    
+
     def _calc_gradient_match_kernel_for_image(self, I, patch_size, subsample):
         gradients = np.gradient(I, axis=(0, 1))
-        Ig_magnitude = np.sqrt(sum(gradients[i] ** 2 for i in range(len(gradients))))
+        Ig_magnitude = np.sqrt(
+            sum(gradients[i] ** 2 for i in range(len(gradients))))
         Ig_angle = np.arctan2(gradients[0], gradients[1])
 
         X_p = self._generate_patch_positions(patch_size)
-        ret = self._compute_feature_vectors(Ig_magnitude, Ig_angle, X_p, patch_size, subsample, self.projector_o)
+        ret = self._compute_feature_vectors(
+            Ig_magnitude, Ig_angle, X_p, patch_size, subsample, self.projector_o)
 
         return self.kpca_op.predict(ret, components=200).flatten()
 
     def _calc_color_match_kernel_for_image(self, I, patch_size, subsample):
         X_p = self._generate_patch_positions(patch_size)
-        ret = self._compute_feature_vectors_color(I, X_p, patch_size, subsample, self.projector_c)
+        ret = self._compute_feature_vectors_color(
+            I, X_p, patch_size, subsample, self.projector_c)
 
         return self.kpca_cp.predict(ret, components=200).flatten()
 
@@ -101,8 +110,10 @@ class KernelDescriptorsExtractor:
         ret = []
         for sx in range(0, magnitude.shape[0] - patch_size[0] + 1, subsample[0]):
             for sy in range(0, magnitude.shape[1] - patch_size[1] + 1, subsample[1]):
-                patch_mag = magnitude[sx:sx + patch_size[0], sy:sy + patch_size[1]].ravel()
-                patch_angle = angle[sx:sx + patch_size[0], sy:sy + patch_size[1]].ravel()[:, np.newaxis]
+                patch_mag = magnitude[sx:sx + patch_size[0],
+                                      sy:sy + patch_size[1]].ravel()
+                patch_angle = angle[sx:sx + patch_size[0],
+                                    sy:sy + patch_size[1]].ravel()[:, np.newaxis]
                 norm = np.sqrt(self.epsilon_g + np.sum(patch_mag ** 2))
 
                 X_o = projector.predict(patch_angle)
@@ -117,7 +128,8 @@ class KernelDescriptorsExtractor:
         ret = []
         for sx in range(0, I.shape[0] - patch_size[0] + 1, subsample[0]):
             for sy in range(0, I.shape[1] - patch_size[1] + 1, subsample[1]):
-                patch = I[sx:sx + patch_size[0], sy:sy + patch_size[1]].reshape(-1, I.shape[2])
+                patch = I[sx:sx + patch_size[0], sy:sy +
+                          patch_size[1]].reshape(-1, I.shape[2])
                 X_c = projector.predict(patch)
                 aux = np.zeros(kdes_dims)
                 for x_c, x_p in zip(X_c, X_p):
@@ -130,10 +142,13 @@ class KernelDescriptorsExtractor:
         results = []
         for i in tqdm(range(X.shape[0])):
             if match_kernel == 'gradient':
-                result = self._calc_gradient_match_kernel_for_image(X[i], patch_size, subsample)
+                result = self._calc_gradient_match_kernel_for_image(
+                    X[i], patch_size, subsample)
             elif match_kernel == 'color':
-                result = self._calc_color_match_kernel_for_image(X[i], patch_size, subsample)
+                result = self._calc_color_match_kernel_for_image(
+                    X[i], patch_size, subsample)
             else:
-                raise ValueError("Unknown match kernel: {}".format(match_kernel))
+                raise ValueError(
+                    "Unknown match kernel: {}".format(match_kernel))
             results.append(result)
         return np.array(results)

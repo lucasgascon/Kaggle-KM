@@ -3,18 +3,24 @@ import numpy as np
 from last_experiments import experiments
 from train import main as train_main
 from train import parser_args as train_parser_args
-# from last_experiments import to_submit
+from last_experiments import to_submit
 import json
-    
-def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C, 
-                    sigma, p, subname, gamma, r, bow, k, sift, fishervect, with_norm, normalize, to_submit = False):
+
+
+"""This file is used to run experiments in parallel.
+"""
+
+
+def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C,
+                    sigma, p, subname, gamma, r, bow, k, sift, fishervect, with_norm, normalize, to_submit=False, augmented=False,
+                    startmode=False, **kwargs):
     commands = []
     if hog:
         commands.append('--hog')
     if raw:
         commands.append('--raw')
     if lbp:
-        commands.append('--lbp')    
+        commands.append('--lbp')
     if PCA:
         commands.append('--PCA')
         commands.append(str(PCA))
@@ -63,8 +69,13 @@ def create_commands(hog, raw, lbp, PCA, kernelPCA, strat, SVM, kernelSVM, C,
         commands.append('--normalize')
     if to_submit:
         commands.append('--to_submit')
+    if augmented:
+        commands.append('--augmented')
+    if startmode:
+        commands.append('--startmode')
     return commands
-    
+
+
 def run_exps():
     accuracies = {}
     i = 0
@@ -72,10 +83,10 @@ def run_exps():
     for ind, (num_exp, params) in enumerate(experiments.items()):
         print('Running experiment', num_exp)
         parser = argparse.ArgumentParser()
-        parser = train_parser_args(parser) 
+        parser = train_parser_args(parser)
         params['subname'] = f'exp_{num_exp}'
 
-        try:               
+        try:
             args = parser.parse_args(create_commands(**params))
             print('Command:', args)
             accuracy = train_main(args)
@@ -93,35 +104,38 @@ def run_exps():
                 print('Error in experiment', num_exp)
                 print('Already tried with both SVMs and failed')
                 accuracy = 0
-                
+
         print('Accuracy:', accuracy)
         accuracies[num_exp] = accuracy
-        if ind %20 == 0 and ind != 0:
+        if ind % 20 == 0 and ind != 0:
             # Save the dictionary to a JSON file
             with open(f'experiment_results_{i}.json', 'w') as f:
                 json.dump(accuracies, f)
-            i +=1
+            i += 1
         print('Finished experiment', num_exp)
         print('')
-        
+
     # Save the dictionary to a JSON file
     with open(file_path, 'w') as f:
         json.dump(accuracies, f)
-        
-def create_submit_files():
+
+
+def create_submit_files(startmode=False):
 
     for ind, (num_exp, params) in enumerate(to_submit.items()):
         print('Running experiment', num_exp)
         parser = argparse.ArgumentParser()
-        parser = train_parser_args(parser) 
-        params['subname'] = f'exp_{num_exp}'
+        parser = train_parser_args(parser)
+        if startmode:
+            params['startmode'] = True
+        params['subname'] = f'exp_bestsubmit_{num_exp}'
         args = parser.parse_args(create_commands(**params))
         print('Command:', args)
         train_main(args)
-       
-    
+
+
 if __name__ == "__main__":
     # Example usage
-    run_exps()
+    # run_exps()
+    create_submit_files()
     print("All experiments run successfully")
-    

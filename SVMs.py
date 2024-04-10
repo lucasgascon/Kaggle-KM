@@ -35,15 +35,11 @@ class SVM_SGD:
         y_mul_kernal = np.outer(y, y) * self.K
 
         for i in range(self.epochs):
-            # ∇αi L = 1 – yi ∑j αj yj K(xi, xj)
             gradient = - self.ones + y_mul_kernal.dot(self.alpha)
-            self.alpha -= self.learning_rate * gradient  # αi = αi – η ∇αi L
+            self.alpha -= self.learning_rate * gradient 
             self.alpha[self.alpha > self.C] = self.C
             self.alpha[self.alpha < 0] = 0
 
-            # ∑αi – (1/2) ∑i ∑j αi αj yi yj K(xi, xj)
-            loss = - np.sum(self.alpha) + 0.5 * \
-                np.sum(np.outer(self.alpha, self.alpha) * y_mul_kernal)
 
         alpha_index = np.where((self.alpha) > 0 & (self.alpha < self.C))[0]
         self.support_vectors = X[alpha_index, :]

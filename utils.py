@@ -41,6 +41,7 @@ def viz_image(image, ax=None, exp_norm=True):
     if ax is None:
         fig, ax = plt.subplots()
     ax.imshow(new_im)
+    ax.axis('off')
     return ax
 
 

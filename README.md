@@ -15,8 +15,10 @@ Furthermore, the pipeline we used to test various settings and carry out various
 ## Dataset 
 
 The studied dataset consists in 5000 train images and 2000 in the test set. They are 500 images of each label. This is an example of a normalized image to classify:
+<p align="center">
+   [alt text](https://github.com/lucasgascon/kaggle-km/blob/main/sampled_image.png?raw=true)
+</p>
 
-![alt text](https://github.com/lucasgascon/kaggle-km/blob/main/sampled_image.png?raw=true)
 
 ## Contact Information
 
